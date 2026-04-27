@@ -1,0 +1,89 @@
+# =========================================================================
+# 🚦 THE TRAFFIC JOURNEY: HOW EXTERNAL USERS REACH YOUR APP
+# =========================================================================
+# 1. USER: Types "k8s-backend.100xdevs.com" in their browser.
+# 2. DNS: Resolves that domain to the PUBLIC IP of your 'LoadBalancer' Service.
+# 3. SERVICE: The 'ingress' Service (at the bottom of this file) receives the 
+#    request on port 80 and sends it to the NGINX Pod.
+# 4. NGINX: Looks at the "Host" header. It sees "k8s-backend.100xdevs.com".
+# 5. CONFIG: Nginx matches this to the 'server_name' in the ConfigMap below.
+# 6. PROXY: The 'proxy_pass' instruction tells Nginx to act as a bridge and 
+#    forward the request to the internal 'backend' Service.
+# =========================================================================
+
+apiVersion: v1               
+kind: ConfigMap            
+metadata:
+  name: nginx-config         
+data:
+  nginx.conf: |              
+    events {
+      worker_connections 1024; 
+    }
+    
+    http {
+      server {
+        listen 80;           # Nginx hears the traffic arriving on port 80
+        server_name k8s-backend.100xdevs.com; # ONLY matches requests for this domain
+        
+        location / {
+          # THIS IS THE "REDIRECT" (Reverse Proxy)
+          # Instead of sending a '301 Redirect' back to the user's browser, 
+          # Nginx makes a NEW request to the backend service itselft and 
+          # returns the result to the user. The user never knows Nginx was a middleman!
+          proxy_pass http://backend.default.svc.cluster.local:3000;
+          
+          # Headers ensure the backend knows the user's real IP and connection type.
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection 'upgrade';
+          proxy_set_header Host $host;
+          proxy_cache_bypass $http_upgrade;
+        }
+      }
+    }
+---
+apiVersion: apps/v1          
+kind: Deployment            
+metadata:
+  name: ingress              
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingress
+  template:
+    metadata:
+      labels:
+        app: ingress
+    spec:
+      containers:
+        - name: ingress
+          image: nginx:latest 
+          ports:
+            - containerPort: 80 
+          volumeMounts:
+            - name: nginx-config
+              # We "inject" our custom routing logic into the container here.
+              mountPath: /etc/nginx/nginx.conf 
+              subPath: nginx.conf              
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config 
+---
+apiVersion: v1               
+kind: Service                
+metadata:
+  name: ingress
+spec:
+  selector:
+    app: ingress
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  # TYPE LOADBALANCER: This is the "Front Gate."
+  # It requests a PUBLIC IP from the Cloud Provider. This is the entry point
+  # for all external traffic heading into your private cluster.
+  type: LoadBalancer         

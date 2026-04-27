@@ -1,0 +1,53 @@
+# apiVersion: The "Language Version." 
+# K8s versioning allows older and newer features to coexist without breaking the system.
+apiVersion: apps/v1          
+
+# kind: The "Object Type." 
+# A Deployment handles the "Lifecycle"—making sure the DB image is pulled and stays running.
+kind: Deployment            
+
+# metadata: The "Identity."
+metadata:
+  name: db                   
+
+# spec: The "Expectation."
+spec:
+  # Why replicas 1? Unlike web apps, a standard Database usually needs one source of truth. 
+  # Multiple DB replicas require complex syncing (like replication clusters).
+  replicas: 1                
+  selector:
+    matchLabels:
+      app: db                # Connects this Deployment controller to its Pods.
+  template:
+    metadata:
+      labels:
+        app: db              # The "Sticker" given to the Pods.
+    spec:
+      containers:
+        - name: db           
+          image: postgres:latest  
+          # env: "Injecting Secrets."
+          # Databases need passwords. Instead of hard-coding them in the app, we pass them here.
+          env:
+            - name: POSTGRES_PASSWORD
+              value: postgres 
+          ports:
+            # Postgres default port. This key exists purely for documentation and Service mapping.
+            - containerPort: 5432 
+---
+# Why a Service for the DB? 
+# If the DB pod restarts, its IP changes. The Service provides a name "db" that NEVER changes.
+apiVersion: v1               
+kind: Service                
+metadata:
+  name: db                   
+spec:
+  selector:
+    app: db                  
+  ports:
+    - protocol: TCP          
+      port: 5432             # The door users knock on (internal to cluster).
+      targetPort: 5432       # The door the DB container is listening on.
+  # type ClusterIP: The "Safety Lock." 
+  # Ensures the database is NOT reachable from the internet. Only internal pods can see it.
+  type: ClusterIP            

@@ -1,0 +1,65 @@
+# PURPOSE: The "apiVersion" tells K8s which version of its internal language we are speaking. 
+# Different versions have different "keys" available. 
+apiVersion: apps/v1          
+
+# PURPOSE: "Kind" tells K8s what type of tool to take out of its toolbox. 
+# A "Deployment" is like a manager that ensures your app is always running.
+kind: Deployment            
+                                          
+# PURPOSE: "Metadata" is the "ID Card" of this object. 
+metadata:
+  name: backend              # The unique name so we can find this deployment later.
+
+# PURPOSE: "Spec" (Specification) is the HEART of the file. It's the "Desired State."
+# It defines WHAT you want the world to look like.
+spec:
+  # PURPOSE: "Replicas" is your scaling "dial." 
+  # If you set it to 10, K8s will automatically start 10 Pods. If one crashes, it replaces it.
+  replicas: 2                
+
+  # PURPOSE: "Selector" is the "Glue." 
+  # A Deployment doesn't actually own Pods; it just "finds" them using these labels.
+  selector:
+    matchLabels:
+      app: backend           # "Manager, only look for pods that have the 'app: backend' sticker."
+
+  # PURPOSE: "Template" is the "Blueprint." 
+  # It tells K8s: "When you need to create a NEW Pod, make it look exactly like this."
+  template:
+    metadata:
+      # PURPOSE: Labels are just metadata. 
+      # This sticker must match the 'selector' above, or the Manager will lose track of the Pod.
+      labels:
+        app: backend         
+    spec:
+      containers:
+        # PURPOSE: A Pod can have multiple containers, but usually has one. 
+        - name: backend      
+          # PURPOSE: This is the actual code (housed in an image). 
+          image:  100xdevs/backend-pg:2  
+          ports:
+            # PURPOSE: "containerPort" tells K8s where the app inside the box expects traffic.
+            # It DOES NOT open a port to the world; it's just a label for other K8s objects.
+            - containerPort: 3000        
+---
+# PURPOSE: A "Service" is a permanent phone number (IP) for your temporary Pods.
+# Without a Service, you'd have to manually find the IP of every Pod every time it restarts.
+apiVersion: v1               
+kind: Service                
+metadata:
+  name: backend              # This name becomes a DNS entry (like 'http://backend') inside the cluster.
+spec:
+  # PURPOSE: This selector connects the "phone number" (Service) to the "houses" (Pods).
+  selector:
+    app: backend             
+  ports:
+    - protocol: TCP          
+      # PURPOSE: "port" is the "External door" of the service. 
+      # Other pods will talk to this service on port 3000.
+      port: 3000             
+      # PURPOSE: "targetPort" is the "Internal door" of the Pod. 
+      # The service will grab traffic from its door (3000) and throw it to the Pod's door (3000).
+      targetPort: 3000       
+  # PURPOSE: "ClusterIP" is for internal communication ONLY. 
+  # It's a security wall—it ensures the backend is invisible to the public internet.
+  type: ClusterIP            
