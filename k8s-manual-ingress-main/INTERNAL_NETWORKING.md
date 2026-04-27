@@ -67,3 +67,18 @@ It is a **Virtual IP**. A hidden agent called `kube-proxy` (running on every nod
 > kubectl get svc
 > ```
 > You will see the **CLUSTER-IP** column. This is the stable virtual IP that bridges the gap between your apps!
+
+---
+
+## ⚡ The Language of the Connection: Why TCP?
+
+In all our manifests, you'll see `protocol: TCP`. 
+
+### The Difference
+- **TCP (Transmission Control Protocol)**: Like a phone call. You establish a connection, say "Hello," and ensure the other person heard every single word. If a word is missed, it's repeated.
+- **UDP (User Datagram Protocol)**: Like shouting into a crowd. You send data and don't care if everyone hears it or if some parts are lost (used for streaming/gaming).
+
+### Why we MUST use TCP here:
+1. **Reliability**: Database queries and HTTP requests (Web traffic) cannot afford to lose even 1 bit of data. If you lose a packet in a SQL query, the whole operation fails.
+2. **Order**: TCP ensures that data arrives in the exact same order it was sent. This is vital for correctly executing transactions or loading web pages.
+3. **HTTP Requirement**: HTTP/1.1 and HTTP/2 (the foundation of the Web) are designed to run on top of TCP.

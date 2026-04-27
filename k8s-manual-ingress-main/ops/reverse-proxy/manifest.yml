@@ -80,7 +80,9 @@ spec:
   selector:
     app: ingress
   ports:
-    - protocol: TCP
+    - # WHY TCP: External traffic hits Nginx via TCP to ensure a stable 
+      # connection for the HTTP protocol.
+      protocol: TCP
       port: 80
       targetPort: 80
   # TYPE LOADBALANCER: This is the "Front Gate."

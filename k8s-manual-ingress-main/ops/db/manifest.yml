@@ -45,9 +45,11 @@ spec:
   selector:
     app: db                  
   ports:
-    - protocol: TCP          
+    - # WHY TCP: Databases (Postgres) must use TCP to ensure data integrity. 
+      # Losing even one packet would corrupt your SQL commands.
+      protocol: TCP          
       port: 5432             # The door users knock on (internal to cluster).
       targetPort: 5432       # The door the DB container is listening on.
   # type ClusterIP: The "Safety Lock." 
   # Ensures the database is NOT reachable from the internet. Only internal pods can see it.
-  type: ClusterIP            
+  type: ClusterIP
